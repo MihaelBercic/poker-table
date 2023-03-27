@@ -2,43 +2,46 @@
 #![no_main]
 
 use arduino_hal::{delay_ms};
-use arduino_hal::port::{Pin, PinOps};
-use arduino_hal::port::mode::{Input, PullUp};
 use panic_halt as _;
 
 use crate::motor::stepper::StepDirection::{Backward, Forward};
+use crate::motor::stepper::StepperMotor;
 
 mod motor;
+mod button;
 
 #[arduino_hal::entry]
 fn main() -> ! {
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
-
-    let button = pins.d12.into_pull_up_input();
-    let mut motor_pins = [
+    let mut stepper_pins = [
         pins.d2.into_output().downgrade(),
         pins.d3.into_output().downgrade(),
         pins.d4.into_output().downgrade(),
         pins.d5.into_output().downgrade(),
     ];
 
-    let mut stepper_motor = motor::stepper::new(&mut motor_pins);
+    let button = pins.d12.into_pull_up_input();
+    let mut stepper_motor: StepperMotor = motor::stepper::new(&mut stepper_pins);
     let mut led = pins.d13.into_output();
 
-    let mut my_button = ObservableButton {
+    let mut my_button = button::ObservableButton {
         pin: button,
         on_change: || {
             led.toggle();
-            for _ in 0..501 {
+            let delay = 3;
+            let steps = 2048;
+
+            for _ in 0..steps {
                 stepper_motor.step(Forward);
-                delay_ms(10);
+                delay_ms(delay);
             }
             delay_ms(1000);
-            for _ in 0..501 {
+            for _ in 0..steps {
                 stepper_motor.step(Backward);
-                delay_ms(10);
+                delay_ms(delay);
             }
+            delay_ms(1000);
             stepper_motor.rest();
         },
     };
@@ -50,7 +53,4 @@ fn main() -> ! {
     }
 }
 
-struct ObservableButton<F: FnMut() -> (), P: PinOps> {
-    pin: Pin<Input<PullUp>, P>,
-    on_change: F,
-}
+

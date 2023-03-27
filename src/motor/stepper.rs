@@ -7,7 +7,9 @@ use crate::motor::stepper::StepDirection::Forward;
 pub fn new(pins: &mut [Pin<Output, Dynamic>]) -> StepperMotor {
     StepperMotor { pins, current_step: 0 }
 }
-
+/**
+Written for bipolar stepper motors.
+ */
 pub struct StepperMotor<'a> {
     pub pins: &'a mut [Pin<Output, Dynamic>],
     current_step: usize,
@@ -16,7 +18,7 @@ pub struct StepperMotor<'a> {
 impl StepperMotor<'_> {
     pub fn step(&mut self, direction: StepDirection) {
         let number_of_pins = self.pins.len();
-        let high_pin: usize = self.current_step % number_of_pins;
+        let high_pin = self.current_step as usize % number_of_pins;
         let indices = 0..number_of_pins;
 
         for index in indices {
@@ -24,18 +26,23 @@ impl StepperMotor<'_> {
             if index == high_pin { pin.set_high(); } else { pin.set_low(); }
         }
 
-        // I don't like this...
-        self.current_step = if direction == Forward {
-            if self.current_step >= number_of_pins { 0 } else { self.current_step + 1 }
+        let is_forward = direction == Forward;
+        let current_step = &mut self.current_step;
+
+        let reset_condition = if is_forward { *current_step >= number_of_pins - 1 } else { *current_step <= 0 };
+        let reset_value = if is_forward { 0 } else { 3 };
+
+        if reset_condition {
+            self.current_step = reset_value
         } else {
-            if self.current_step <= 0 { 3 } else { self.current_step - 1 }
-        }
+            if is_forward { *current_step = *current_step + 1 } else { *current_step = *current_step - 1 };
+        };
     }
 
-    pub fn rest(&mut self){
-        for index in 0..self.pins.len() {
-            let pin = &mut self.pins[index];
-            pin.set_low();
+    pub fn rest(&mut self) {
+        let pins = &mut self.pins.iter_mut();
+        for x in pins {
+            x.set_low();
         }
     }
 }
@@ -45,3 +52,5 @@ pub enum StepDirection {
     Forward,
     Backward,
 }
+
+
