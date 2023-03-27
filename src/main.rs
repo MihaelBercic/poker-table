@@ -1,25 +1,21 @@
 #![no_std]
 #![no_main]
 
-mod motor;
-
-use core::any::Any;
-use arduino_hal::hal::port::{DynamicPort, PB5};
-use arduino_hal::pac::portb::PORTB;
-use arduino_hal::pac::portc::PORTC;
-use arduino_hal::pac::portd::PORTD;
-use arduino_hal::{delay_ms, Pins};
-use arduino_hal::port::mode::{AnyInput, Floating, Input, Output, PullUp};
-use arduino_hal::port::{mode, Pin, PinMode, PinOps};
-use embedded_hal::digital::v2::{InputPin, OutputPin, PinState, ToggleableOutputPin};
+use arduino_hal::{delay_ms};
+use arduino_hal::port::{Pin, PinOps};
+use arduino_hal::port::mode::{Input, PullUp};
 use panic_halt as _;
+
+use crate::motor::stepper::StepDirection::{Backward, Forward};
+
+mod motor;
 
 #[arduino_hal::entry]
 fn main() -> ! {
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
 
-    let mut button = pins.d12.into_pull_up_input();
+    let button = pins.d12.into_pull_up_input();
     let mut motor_pins = [
         pins.d2.into_output().downgrade(),
         pins.d3.into_output().downgrade(),
@@ -34,12 +30,16 @@ fn main() -> ! {
         pin: button,
         on_change: || {
             led.toggle();
-            for _ in 0..2048 {
-                stepper_motor.step();
-                delay_ms(3);
+            for _ in 0..501 {
+                stepper_motor.step(Forward);
+                delay_ms(10);
             }
-            delay_ms(50);
-
+            delay_ms(1000);
+            for _ in 0..501 {
+                stepper_motor.step(Backward);
+                delay_ms(10);
+            }
+            stepper_motor.rest();
         },
     };
 
