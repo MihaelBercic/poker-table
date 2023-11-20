@@ -7,6 +7,7 @@ use crate::motor::stepper::StepDirection::Forward;
 pub fn new(pins: &mut [Pin<Output, Dynamic>]) -> StepperMotor {
     StepperMotor { pins, current_step: 0 }
 }
+
 /**
 Written for bipolar stepper motors.
  */

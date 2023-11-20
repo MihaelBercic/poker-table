@@ -1,56 +1,43 @@
 #![no_std]
 #![no_main]
 
-use arduino_hal::{delay_ms};
+mod observable;
+
+use arduino_hal::{delay_ms, pac};
+use arduino_hal::hal::port::PD7;
+use arduino_hal::port::mode::Output;
+use arduino_hal::port::Pin;
+use arduino_hal::simple_pwm::{IntoPwmPin, Prescaler, Timer2Pwm};
+use embedded_hal::digital::v2::{OutputPin, PinState};
+use embedded_hal::digital::v2::PinState::{High, Low};
 use panic_halt as _;
 
-use crate::motor::stepper::StepDirection::{Backward, Forward};
-use crate::motor::stepper::StepperMotor;
 
-mod motor;
-mod button;
+fn setup() {}
 
 #[arduino_hal::entry]
 fn main() -> ! {
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
-    let mut stepper_pins = [
-        pins.d2.into_output().downgrade(),
-        pins.d3.into_output().downgrade(),
-        pins.d4.into_output().downgrade(),
-        pins.d5.into_output().downgrade(),
-    ];
 
-    let button = pins.d12.into_pull_up_input();
-    let mut stepper_motor: StepperMotor = motor::stepper::new(&mut stepper_pins);
-    let mut led = pins.d13.into_output();
+    let mut led_pin = pins.d13.into_output();
+    let button_pin = pins.d12.into_pull_up_input().downgrade();
 
-    let mut my_button = button::ObservableButton {
-        pin: button,
-        on_change: || {
-            led.toggle();
-            let delay = 3;
-            let steps = 2048;
+    let photo_resistor_pin = pins.d7.into_pull_up_input().downgrade();
 
-            for _ in 0..steps {
-                stepper_motor.step(Forward);
-                delay_ms(delay);
-            }
-            delay_ms(1000);
-            for _ in 0..steps {
-                stepper_motor.step(Backward);
-                delay_ms(delay);
-            }
-            delay_ms(1000);
-            stepper_motor.rest();
-        },
-    };
+
+
+    let mut my_button = observable::button::new(button_pin, || {
+    });
+
+    let mut photo_resistor = observable::photo_resistor::new(photo_resistor_pin, || {
+        led_pin.toggle();
+        delay_ms(100);
+    });
+
 
     loop {
-        if my_button.pin.is_low() {
-            (my_button.on_change)();
-        }
+        my_button.listen();
+        photo_resistor.listen();
     }
 }
-
-
