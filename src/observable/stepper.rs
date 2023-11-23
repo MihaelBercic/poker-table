@@ -2,21 +2,22 @@ use arduino_hal::hal::port::Dynamic;
 use arduino_hal::port::mode::Output;
 use arduino_hal::port::Pin;
 
-use crate::motor::stepper::StepDirection::Forward;
+use crate::observable::stepper::StepDirection::Forward;
 
-pub fn new(pins: &mut [Pin<Output, Dynamic>]) -> StepperMotor {
+pub fn new(pins: [Pin<Output, Dynamic>; 4]) -> StepperMotor {
     StepperMotor { pins, current_step: 0 }
 }
+
 
 /**
 Written for bipolar stepper motors.
  */
-pub struct StepperMotor<'a> {
-    pub pins: &'a mut [Pin<Output, Dynamic>],
+pub struct StepperMotor {
+    pins: [Pin<Output, Dynamic>; 4],
     current_step: usize,
 }
 
-impl StepperMotor<'_> {
+impl StepperMotor {
     pub fn step(&mut self, direction: StepDirection) {
         let number_of_pins = self.pins.len();
         let high_pin = self.current_step as usize % number_of_pins;
