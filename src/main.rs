@@ -3,15 +3,17 @@
 
 mod observable;
 
-use core::cell::Cell;
 use arduino_hal::{delay_ms, pac};
+use arduino_hal::hal::I2c;
 use arduino_hal::hal::port::PD7;
 use arduino_hal::port::mode::Output;
 use arduino_hal::port::Pin;
 use arduino_hal::simple_pwm::{IntoPwmPin, Prescaler, Timer2Pwm};
+
 use embedded_hal::digital::v2::{OutputPin, PinState};
 use embedded_hal::digital::v2::PinState::{High, Low};
 use panic_halt as _;
+
 use crate::observable::stepper::StepDirection::{Backward, Forward};
 use crate::observable::stepper::StepperMotor;
 
@@ -38,28 +40,18 @@ fn main() -> ! {
 
     let mut was_forward: bool = false;
 
-    let mut led_pin = pins.d13.into_output();
     let mut my_button = observable::button::new(button_pin, || {
-        led_pin.toggle();
-    });
-
-    let mut my_second_button = observable::button::new(second_button_pin, || {
-        led_pin.toggle();
-    });
-
-    /**
-
-     for i in 0..500
-         stepper_motor.step(if was_forward { Backward } else { Forward });
+        for i in 0..500 {
+            stepper_motor.step(if was_forward { Backward } else { Forward });
             delay_ms(5)
         }
         was_forward = !was_forward;
         stepper_motor.rest();
-    */
+    });
 
 
     let mut photo_resistor = observable::photo_resistor::new(photo_resistor_pin, || {
-        led_pin.toggle();
+// &led_pin.toggle();
         delay_ms(100);
     });
 
